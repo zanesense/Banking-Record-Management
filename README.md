@@ -2,8 +2,8 @@
 
 Welcome to the **Bank Management System**! This is a console-based application designed to manage bank accounts efficiently. The system allows you to create, modify, and delete accounts, as well as handle transactions such as deposits and withdrawals.
 
-![GitHub repo size](https://img.shields.io/github/repo-size/zanesense/bank-management-system)
-![GitHub stars](https://img.shields.io/github/stars/zanesense/bank-management-system?style=social)
+![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/zanesense/banking-record-management)
+![GitHub Repo stars](https://img.shields.io/github/stars/zanesense/banking-record-management)
 
 ## Features
 
