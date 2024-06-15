@@ -6,6 +6,9 @@
 using namespace std;
 
 const string filename = "accounts.txt";
+const string adminUser = "admin";
+const string adminPass = "password";
+const int MAX_ACCOUNTS = 100;
 
 struct Account {
     int number;
@@ -15,37 +18,75 @@ struct Account {
     int amount;
 };
 
+Account accounts[MAX_ACCOUNTS];
+int accountCount = 0;
+
+void load_accounts() {
+    accountCount = 0;
+    ifstream inputFile(filename);
+    int num;
+    string firstName, lastName;
+    char type;
+    int amount;
+    while (inputFile >> num >> firstName >> lastName >> type >> amount) {
+        if (accountCount < MAX_ACCOUNTS) {
+            accounts[accountCount].number = num;
+            accounts[accountCount].firstName = firstName;
+            accounts[accountCount].lastName = lastName;
+            accounts[accountCount].type = type;
+            accounts[accountCount].amount = amount;
+            accountCount++;
+        }
+    }
+    inputFile.close();
+}
+
+void save_accounts() {
+    ofstream outputFile(filename);
+    for (int i = 0; i < accountCount; i++) {
+        outputFile << accounts[i].number << " " << accounts[i].firstName << " " << accounts[i].lastName << " " << accounts[i].type << " " << accounts[i].amount << endl;
+    }
+    outputFile.close();
+}
+
+bool admin_login() {
+    string username, password;
+    cout << "Enter admin username: ";
+    cin >> username;
+    cout << "Enter admin password: ";
+    cin >> password;
+    return (username == adminUser && password == adminPass);
+}
+
 void create_account() {
     system("cls");
     cout << "+-----------------------+\n";
     cout << "| CREATE NEW ACCOUNT    |\n";
     cout << "+-----------------------+\n";
 
-    Account newAccount;
-
-    cout << "Enter account no. : ";
-    cin >> newAccount.number;
-
-    ifstream inputFile(filename);
-    int num;
-    string firstName, lastName;
-    char type;
-    int amount;
-    bool duplicate = false;
-    while (inputFile >> num >> firstName >> lastName >> type >> amount) {
-        if (num == newAccount.number) {
-            duplicate = true;
-            break;
-        }
-    }
-    inputFile.close();
-    if (duplicate) {
-        cout << "Account with this account number already exists!" << endl;
+    if (accountCount >= MAX_ACCOUNTS) {
+        cout << "Account limit reached. Cannot create more accounts.\n";
         cout << "Press Enter to return to the main menu...";
         cin.ignore();
         cin.get();
         system("cls");
         return;
+    }
+
+    Account newAccount;
+
+    cout << "Enter account no. : ";
+    cin >> newAccount.number;
+
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].number == newAccount.number) {
+            cout << "Account with this account number already exists!" << endl;
+            cout << "Press Enter to return to the main menu...";
+            cin.ignore();
+            cin.get();
+            system("cls");
+            return;
+        }
     }
 
     cout << "Enter account holder's first name : ";
@@ -72,15 +113,9 @@ void create_account() {
         return;
     }
 
-    ofstream outputFile(filename, ios::app);
-    if (outputFile.is_open()) {
-        outputFile << newAccount.number << " " << newAccount.firstName << " " << newAccount.lastName << " " << newAccount.type << " " << newAccount.amount << endl; // Make sure fields are separated by space
-        outputFile.close();
-    }
-    else {
-        cout << "Unable to open file!" << endl;
-        return;
-    }
+    accounts[accountCount] = newAccount;
+    accountCount++;
+    save_accounts();
 
     cout << endl;
     cout << "Account Created.\n";
@@ -98,31 +133,18 @@ void create_account() {
 
 void display_accounts() {
     system("cls");
-    ifstream inputFile(filename);
-    if (inputFile.is_open()) {
-        cout << "List of all accounts:\n";
-        cout << "+---------------------------------------------------------------+\n";
-        cout << "| Account No  |  First Name   |  Last Name    |  Type  | Amount |\n";
-        cout << "+---------------------------------------------------------------+\n";
-        int num;
-        string firstName, lastName;
-        char type;
-        int amount;
-
-        while (inputFile >> num >> firstName >> lastName >> type >> amount) {
-            cout << "| " << setw(11) << num << " | " <<
-                setw(13) << firstName << " | " <<
-                setw(12) << lastName << " |   " <<
-                setw(5) << type << " | " <<
-                setw(6) << amount << " |\n";
-        }
-
-        cout << "+---------------------------------------------------------------+\n";
-        inputFile.close();
+    cout << "List of all accounts:\n";
+    cout << "+---------------------------------------------------------------+\n";
+    cout << "| Account No  |  First Name   |  Last Name    |  Type  | Amount |\n";
+    cout << "+---------------------------------------------------------------+\n";
+    for (int i = 0; i < accountCount; i++) {
+        cout << "| " << setw(11) << accounts[i].number << " | " <<
+            setw(13) << accounts[i].firstName << " | " <<
+            setw(12) << accounts[i].lastName << " |   " <<
+            setw(5) << accounts[i].type << " | " <<
+            setw(6) << accounts[i].amount << " |\n";
     }
-    else {
-        cout << "Unable to open file!" << endl;
-    }
+    cout << "+---------------------------------------------------------------+\n";
 
     cout << "Press Enter to return to the main menu...";
     cin.ignore();
@@ -142,40 +164,21 @@ void deposit_amount() {
     cout << "Enter deposit amount : ";
     cin >> depositAmount;
 
-    ifstream inputFile(filename);
-    ofstream tempFile("temp.txt");
-
-    if (!inputFile.is_open() || !tempFile.is_open()) {
-        cout << "Unable to open file!" << endl;
-        return;
-    }
-
-    int num;
-    string firstName, lastName;
-    char type;
-    int amount;
-
     bool found = false;
 
-    while (inputFile >> num >> firstName >> lastName >> type >> amount) {
-        if (num == accountNo) {
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].number == accountNo) {
+            accounts[i].amount += depositAmount;
             found = true;
-            amount += depositAmount;
+            break;
         }
-        tempFile << num << " " << firstName << " " << lastName << " " << type << " " << amount << endl;
     }
 
-    inputFile.close();
-    tempFile.close();
-
-    remove(filename.c_str());
-    rename("temp.txt", filename.c_str());
-
-    if (!found) {
-        cout << "Account not found!" << endl;
-    }
-    else {
+    if (found) {
+        save_accounts();
         cout << "Amount deposited successfully!" << endl;
+    } else {
+        cout << "Account not found!" << endl;
     }
 
     cout << "Press Enter to return to the main menu...";
@@ -196,45 +199,30 @@ void withdraw_amount() {
     cout << "Enter withdrawal amount : ";
     cin >> withdrawAmount;
 
-    ifstream inputFile(filename);
-    ofstream tempFile("temp.txt");
-
-    if (!inputFile.is_open() || !tempFile.is_open()) {
-        cout << "Unable to open file!" << endl;
-        return;
-    }
-
-    int num;
-    string firstName, lastName;
-    char type;
-    int amount;
-
     bool found = false;
 
-    while (inputFile >> num >> firstName >> lastName >> type >> amount) {
-        if (num == accountNo) {
-            found = true;
-            if (amount >= withdrawAmount) {
-                amount -= withdrawAmount;
-            }
-            else {
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].number == accountNo) {
+            if (accounts[i].amount >= withdrawAmount) {
+                accounts[i].amount -= withdrawAmount;
+                found = true;
+            } else {
                 cout << "Insufficient balance!" << endl;
+                cout << "Press Enter to return to the main menu...";
+                cin.ignore();
+                cin.get();
+                system("cls");
+                return;
             }
+            break;
         }
-        tempFile << num << " " << firstName << " " << lastName << " " << type << " " << amount << endl;
     }
 
-    inputFile.close();
-    tempFile.close();
-
-    remove(filename.c_str());
-    rename("temp.txt", filename.c_str());
-
-    if (!found) {
-        cout << "Account not found!" << endl;
-    }
-    else {
+    if (found) {
+        save_accounts();
         cout << "Amount withdrawn successfully!" << endl;
+    } else {
+        cout << "Account not found!" << endl;
     }
 
     cout << "Press Enter to return to the main menu...";
@@ -253,37 +241,22 @@ void close_account() {
     cout << "Enter account no. : ";
     cin >> accountNo;
 
-    ifstream inputFile(filename);
-    ofstream tempFile("temp.txt");
-
-    if (!inputFile.is_open() || !tempFile.is_open()) {
-        cout << "Unable to open file!" << endl;
-        return;
-    }
-
-    int num;
-    string firstName, lastName;
-    char type;
-    int amount;
-
     bool found = false;
-
-    while (inputFile >> num >> firstName >> lastName >> type >> amount) {
-        if (num == accountNo) {
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].number == accountNo) {
             found = true;
-            cout << "Account with A/c no. " << num << " has been closed." << endl;
-            continue;
+            for (int j = i; j < accountCount - 1; j++) {
+                accounts[j] = accounts[j + 1];
+            }
+            accountCount--;
+            break;
         }
-        tempFile << num << " " << firstName << " " << lastName << " " << type << " " << amount << endl;
     }
 
-    inputFile.close();
-    tempFile.close();
-
-    remove(filename.c_str());
-    rename("temp.txt", filename.c_str());
-
-    if (!found) {
+    if (found) {
+        save_accounts();
+        cout << "Account with A/c no. " << accountNo << " has been closed." << endl;
+    } else {
         cout << "Account not found!" << endl;
     }
 
@@ -303,46 +276,27 @@ void modify_account() {
     cout << "Enter account no. : ";
     cin >> accountNo;
 
-    ifstream inputFile(filename);
-    ofstream tempFile("temp.txt");
-
-    if (!inputFile.is_open() || !tempFile.is_open()) {
-        cout << "Unable to open file!" << endl;
-        return;
-    }
-
-    int num;
-    string firstName, lastName;
-    char type;
-    int amount;
-
     bool found = false;
 
-    while (inputFile >> num >> firstName >> lastName >> type >> amount) {
-        if (num == accountNo) {
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].number == accountNo) {
             found = true;
             cout << "Enter new first name: ";
             cin.ignore();
-            getline(cin, firstName);
+            getline(cin, accounts[i].firstName);
             cout << "Enter new last name: ";
-            getline(cin, lastName);
+            getline(cin, accounts[i].lastName);
             cout << "Enter new account type (C/S): ";
-            cin >> type;
+            cin >> accounts[i].type;
+            break;
         }
-        tempFile << num << " " << firstName << " " << lastName << " " << type << " " << amount << endl;
     }
 
-    inputFile.close();
-    tempFile.close();
-
-    remove(filename.c_str());
-    rename("temp.txt", filename.c_str());
-
-    if (!found) {
-        cout << "Account not found!" << endl;
-    }
-    else {
+    if (found) {
+        save_accounts();
         cout << "Account modified successfully!" << endl;
+    } else {
+        cout << "Account not found!" << endl;
     }
 
     cout << "Press Enter to return to the main menu...";
@@ -361,34 +315,21 @@ void balance_inquiry() {
     cout << "Enter account no. : ";
     cin >> accountNo;
 
-    ifstream inputFile(filename);
-    if (inputFile.is_open()) {
-        int num;
-        string firstName, lastName;
-        char type;
-        int amount;
+    bool found = false;
 
-        bool found = false;
-
-        while (inputFile >> num >> firstName >> lastName >> type >> amount) {
-            if (num == accountNo) {
-                found = true;
-                cout << "Account No: " << num << endl;
-                cout << "Account Holder's Name: " << firstName << " " << lastName << endl;
-                cout << "Account Type: " << type << endl;
-                cout << "Balance: " << amount << endl;
-                break;
-            }
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].number == accountNo) {
+            found = true;
+            cout << "A/c no.: " << accounts[i].number << endl;
+            cout << "Account Holder's Name: " << accounts[i].firstName << " " << accounts[i].lastName << endl;
+            cout << "Account Type: " << accounts[i].type << endl;
+            cout << "Balance: " << accounts[i].amount << endl;
+            break;
         }
-
-        if (!found) {
-            cout << "Account not found!" << endl;
-        }
-
-        inputFile.close();
     }
-    else {
-        cout << "Unable to open file!" << endl;
+
+    if (!found) {
+        cout << "Account not found!" << endl;
     }
 
     cout << "Press Enter to return to the main menu...";
@@ -397,18 +338,51 @@ void balance_inquiry() {
     system("cls");
 }
 
-int menu() {
+int admin_menu() {
+    load_accounts();
     do {
         int ch;
-        cout << "\n1 - NEW ACCOUNT";
-        cout << "\n2 - DISPLAY ALL ACCOUNTS";
-        cout << "\n3 - DEPOSIT AMOUNT";
-        cout << "\n4 - WITHDRAW AMOUNT";
-        cout << "\n5 - CLOSE AN ACCOUNT";
-        cout << "\n6 - MODIFY AN ACCOUNT";
-        cout << "\n7 - BALANCE INQUIRY";
-        cout << "\n8 - EXIT\n";
-        cout << "\nSelect Your Option (1-8): ";
+        cout << "\nADMIN MENU\n";
+        cout << "1 - DISPLAY ALL ACCOUNTS\n";
+        cout << "2 - CLOSE AN ACCOUNT\n";
+        cout << "3 - MODIFY AN ACCOUNT\n";
+        cout << "4 - EXIT\n";
+        cout << "Select Your Option (1-4): ";
+        cin >> ch;
+
+        switch (ch) {
+        case 1:
+            display_accounts();
+            break;
+        case 2:
+            close_account();
+            break;
+        case 3:
+            modify_account();
+            break;
+        case 4:
+            cout << "Exiting admin menu. Thank you!" << endl;
+            return 0;
+        default:
+            cout << "Invalid Choice! \n";
+        }
+
+    } while (true);
+
+    return 0;
+}
+
+int user_menu() {
+    load_accounts();
+    do {
+        int ch;
+        cout << "\nUSER MENU\n";
+        cout << "1 - NEW ACCOUNT\n";
+        cout << "2 - DEPOSIT AMOUNT\n";
+        cout << "3 - WITHDRAW AMOUNT\n";
+        cout << "4 - BALANCE INQUIRY\n";
+        cout << "5 - EXIT\n";
+        cout << "Select Your Option (1-5): ";
         cin >> ch;
 
         switch (ch) {
@@ -416,30 +390,19 @@ int menu() {
             create_account();
             break;
         case 2:
-            display_accounts();
-            break;
-        case 3:
             deposit_amount();
             break;
-        case 4:
+        case 3:
             withdraw_amount();
             break;
-        case 5:
-            close_account();
-            break;
-        case 6:
-            modify_account();
-            break;
-        case 7:
+        case 4:
             balance_inquiry();
             break;
-        case 8:
-            system("cls");
-            cout << "Exiting the program. Thank you for using our banking system!" << endl;
+        case 5:
+            cout << "Exiting user menu. Thank you!" << endl;
             return 0;
         default:
-            cout << "\nInvalid Choice! \n";
-            return 0;
+            cout << "Invalid Choice! \n";
         }
 
     } while (true);
@@ -448,5 +411,24 @@ int menu() {
 }
 
 int main() {
-    menu();
+    int userType;
+    cout << "Welcome to the Banking System\n";
+    cout << "1 - Admin Login\n";
+    cout << "2 - User Menu\n";
+    cout << "Select Your Option (1-2): ";
+    cin >> userType;
+
+    if (userType == 1) {
+        if (admin_login()) {
+            admin_menu();
+        } else {
+            cout << "Invalid admin credentials! Exiting...\n";
+        }
+    } else if (userType == 2) {
+        user_menu();
+    } else {
+        cout << "Invalid choice! Exiting...\n";
+    }
+
+    return 0;
 }
